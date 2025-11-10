@@ -25,10 +25,12 @@ class ProductSitemapCrawler:
         crawler_config: CrawlerConfig | None = None,
         progress_path: Path | str | None = None,
         max_products: int | None = None,
+        product_url_output: Path | str | None = None,
     ) -> None:
         self._crawler_config = crawler_config or CrawlerConfig()
         self._progress_path = Path(progress_path) if progress_path else None
         self._max_products = max_products
+        self._product_url_output = Path(product_url_output) if product_url_output else None
 
     def run(self, excel_path: Path | str, output_path: Path | str) -> List[SiteScrapeResult]:
         """Execute the crawler on a given Excel workbook."""
@@ -36,6 +38,13 @@ class ProductSitemapCrawler:
         sites = load_sites_from_excel(excel_path)
         fetcher = SitemapFetcher(self._crawler_config)
         results: List[SiteScrapeResult] = []
+        if self._product_url_output:
+            output_path = self._product_url_output
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                output_path.unlink()
+            except FileNotFoundError:
+                pass
         try:
             for site in sites:
                 result = self._process_site(site, fetcher)
@@ -95,8 +104,18 @@ class ProductSitemapCrawler:
 
         logger.info("Collected %s product URLs for %s", len(product_urls), site.brand)
         result.product_urls = product_urls
+        self._persist_product_urls(result)
 
-        for product_url in self._iterate_products(product_urls):
+        total_products = len(product_urls)
+        if total_products:
+            logger.info("Fetching product details for %s items from %s", total_products, site.brand)
+
+        for index, product_url in enumerate(self._iterate_products(product_urls), start=1):
+            logger.debug("[%s] Fetching product %s/%s: %s", site.brand, index, total_products, product_url)
+            if index == 1 or index == total_products or index % 50 == 0:
+                logger.info(
+                    "[%s] Progress: %s/%s products", site.brand, index, total_products
+                )
             record = self._fetch_product(fetcher, product_url)
             result.products.append(record)
             if record.error:
@@ -151,3 +170,16 @@ class ProductSitemapCrawler:
         record_path.parent.mkdir(parents=True, exist_ok=True)
         with record_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record) + "\n")
+
+    def _persist_product_urls(self, result: SiteScrapeResult) -> None:
+        if not self._product_url_output:
+            return
+        payload = {
+            "brand": result.brand,
+            "site_url": result.site_url,
+            "product_urls": list(result.product_urls),
+        }
+        output_path = self._product_url_output
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload) + "\n")
