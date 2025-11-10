@@ -1,4 +1,4 @@
-"""Command line entry point for the sitemap extraction agent."""
+"""Command line entry point for the product sitemap crawler."""
 
 from __future__ import annotations
 
@@ -6,8 +6,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from parlant_agent import SitemapExtractionAgent
-from parlant_agent.config import AgentConfig, CrawlerConfig
+from product_scraper import CrawlerConfig, ProductSitemapCrawler
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,7 +17,7 @@ def parse_args() -> argparse.Namespace:
         "--progress",
         type=Path,
         default=None,
-        help="Optional path to a JSONL file where progress snapshots will be written.",
+        help="Optional path to a JSONL file where per-site snapshots will be written.",
     )
     parser.add_argument(
         "--delay",
@@ -39,6 +38,18 @@ def parse_args() -> argparse.Namespace:
         help="HTTP request timeout in seconds.",
     )
     parser.add_argument(
+        "--retry-backoff",
+        type=float,
+        default=2.0,
+        help="Exponential backoff factor between retries.",
+    )
+    parser.add_argument(
+        "--max-products",
+        type=int,
+        default=None,
+        help="Optional cap on the number of products to fetch per site.",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Increase logging verbosity.",
@@ -53,17 +64,22 @@ def main() -> None:
     crawler_config = CrawlerConfig(
         max_retries=args.retries,
         request_timeout=args.timeout,
+        retry_backoff=args.retry_backoff,
         delay_between_requests=args.delay,
     )
-    agent_config = AgentConfig()
 
-    agent = SitemapExtractionAgent(
+    crawler = ProductSitemapCrawler(
         crawler_config=crawler_config,
-        agent_config=agent_config,
         progress_path=args.progress,
+        max_products=args.max_products,
     )
-    results = agent.run(args.excel, args.output)
-    logging.info("Collected product sitemaps for %s stores", len(results))
+    results = crawler.run(args.excel, args.output)
+    total_products = sum(len(result.products) for result in results)
+    logging.info(
+        "Collected %s product payloads across %s store(s)",
+        total_products,
+        len(results),
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

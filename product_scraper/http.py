@@ -28,7 +28,7 @@ class FetchResult:
 
 
 class SitemapFetcher:
-    """Small wrapper around :mod:`requests` that adds retry handling."""
+    """Wrapper around :mod:`requests` that adds retry handling."""
 
     def __init__(self, config: CrawlerConfig):
         self._config = config
@@ -40,10 +40,10 @@ class SitemapFetcher:
 
         attempts = 0
         backoff = self._config.retry_backoff
-        last_error = None
+        last_error: Optional[str] = None
         while attempts < self._config.max_retries:
             if attempts:
-                delay = backoff ** attempts
+                delay = backoff**attempts
                 logger.debug("Sleeping %s seconds before retry", delay)
                 time.sleep(delay)
             attempts += 1
@@ -52,12 +52,12 @@ class SitemapFetcher:
                 response = self._session.get(url, timeout=self._config.request_timeout)
                 if response.status_code == 429:
                     logger.warning("Received 429 from %s, backing off", url)
-                    time.sleep(backoff ** attempts)
+                    time.sleep(backoff**attempts)
                     continue
                 response.raise_for_status()
                 time.sleep(self._config.delay_between_requests)
                 return FetchResult(url=url, response=response)
-            except requests.RequestException as exc:  # pragma: no cover - network errors
+            except requests.RequestException as exc:
                 logger.warning("Attempt %s failed for %s: %s", attempts, url, exc)
                 last_error = str(exc)
         return FetchResult(url=url, response=None, error=last_error)

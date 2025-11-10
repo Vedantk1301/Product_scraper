@@ -12,14 +12,15 @@ from .models import SiteEntry
 
 
 REQUIRED_COLUMNS = {
-    "brand_name",
-    "site_url",
-    "primary_sitemaps",
+    "brand",
+    "url",
+    "primary_sitemap",
+    "product_sitemaps",
 }
 
 
-def _parse_sitemap_cell(value) -> List[str]:
-    """Parse a cell that contains one or more sitemap URLs."""
+def _parse_list_cell(value) -> List[str]:
+    """Parse a cell that contains one or more URLs."""
 
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return []
@@ -32,7 +33,7 @@ def _parse_sitemap_cell(value) -> List[str]:
         try:
             parsed = json.loads(stripped)
         except json.JSONDecodeError:
-            separators = [",", "\n", "|"]
+            separators = ["\n", ",", "|"]
             for sep in separators:
                 if sep in stripped:
                     return [item.strip() for item in stripped.split(sep) if item.strip()]
@@ -44,8 +45,18 @@ def _parse_sitemap_cell(value) -> List[str]:
     return [str(value).strip()]
 
 
+def _normalise_metadata(value):
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    return str(value)
+
+
 def load_sites_from_excel(path: Path | str) -> List[SiteEntry]:
-    """Load Shopify site entries from an Excel workbook."""
+    """Load site entries from an Excel workbook."""
 
     workbook_path = Path(path)
     if not workbook_path.exists():
@@ -60,16 +71,19 @@ def load_sites_from_excel(path: Path | str) -> List[SiteEntry]:
 
     sites: List[SiteEntry] = []
     for record in frame.to_dict(orient="records"):
-        sitemap_urls = _parse_sitemap_cell(record.get("primary_sitemaps"))
+        product_sitemaps = _parse_list_cell(record.get("product_sitemaps"))
+        primary_candidates = _parse_list_cell(record.get("primary_sitemap"))
+        primary_sitemap = primary_candidates[0] if primary_candidates else None
         metadata = {
-            key: value
+            key: _normalise_metadata(value)
             for key, value in record.items()
             if key not in REQUIRED_COLUMNS and value == value  # filter NaN
         }
         site = SiteEntry(
-            brand_name=str(record.get("brand_name", "")).strip(),
-            site_url=str(record.get("site_url", "")).strip(),
-            sitemap_urls=sitemap_urls,
+            brand=str(record.get("brand", "")).strip(),
+            site_url=str(record.get("url", "")).strip(),
+            primary_sitemap=primary_sitemap,
+            product_sitemaps=product_sitemaps,
             metadata=metadata,
         )
         sites.append(site)
