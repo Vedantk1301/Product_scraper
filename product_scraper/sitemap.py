@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import List, Tuple
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, FeatureNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,13 @@ logger = logging.getLogger(__name__)
 def parse_sitemap_document(url: str, body: str) -> Tuple[List[str], List[str]]:
     """Inspect the sitemap document and return product URLs and nested sitemap links."""
 
-    soup = BeautifulSoup(body, "xml")
+    try:
+        soup = BeautifulSoup(body, "xml")
+    except FeatureNotFound:
+        logger.warning(
+            "XML parser not available, falling back to the default HTML parser"
+        )
+        soup = BeautifulSoup(body, "html.parser")
     product_urls: List[str] = []
     discovered_sitemaps: List[str] = []
 
