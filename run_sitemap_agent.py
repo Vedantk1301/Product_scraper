@@ -1,4 +1,4 @@
-"""Command line entry point for the sitemap extraction agent."""
+"""Command line entry point for the Shopify product scraper."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 
 from parlant_agent import SitemapExtractionAgent
-from parlant_agent.config import AgentConfig, CrawlerConfig
+from parlant_agent.config import CrawlerConfig, ProductScraperConfig
 
 
 def parse_args() -> argparse.Namespace:
@@ -55,15 +55,15 @@ def main() -> None:
         request_timeout=args.timeout,
         delay_between_requests=args.delay,
     )
-    agent_config = AgentConfig()
+    scraper_config = ProductScraperConfig()
 
     agent = SitemapExtractionAgent(
         crawler_config=crawler_config,
-        agent_config=agent_config,
+        scraper_config=scraper_config,
         progress_path=args.progress,
     )
     results = agent.run(args.excel, args.output)
-    logging.info("Collected product sitemaps for %s stores", len(results))
+    logging.info("Collected product data for %s stores", len(results))
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

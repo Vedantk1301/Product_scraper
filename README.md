@@ -1,22 +1,22 @@
 # Product Scraper
 
-This repository provides a light-weight Parlant-powered agent that collects product
-sitemap URLs for Shopify stores. The workflow is designed to operate in three
-phases:
+This repository provides a light-weight Shopify scraper that reads a workbook of
+store metadata, crawls the product sitemap feeds supplied for each store, and
+then fetches the structured product payload from Shopify's public JSON
+endpoints. The workflow operates in two phases:
 
-1. **Sitemap discovery (this repository)** – Read an Excel workbook containing
-   brand metadata and primary sitemap URLs, crawl those sitemap indices while
-   respecting rate limits, and extract product sitemap URLs.
-2. **Product scraping (external agent)** – Consume the product sitemap URLs and
-   collect the structured product data using Shopify-aware logic.
-3. **Data normalisation (external agent)** – Store the scraped data in the
-   desired format.
+1. **Product sitemap collection** – Read an Excel workbook containing brand
+   metadata and pre-specified product sitemap URLs, crawl those feeds while
+   respecting rate limits, and extract every product URL exposed by Shopify.
+2. **Product collection** – Convert each product URL into the corresponding
+   Shopify JSON endpoint, fetch the structured payload, and persist the result
+   alongside any failures.
 
 ## Project layout
 
-- `parlant_agent/` – Core logic for parsing the Excel workbook, fetching
-  sitemaps, and interacting with Parlant.
-- `run_sitemap_agent.py` – Command line entry point for the discovery agent.
+- `parlant_agent/` – Core logic for parsing the Excel workbook, crawling
+  sitemaps, and collecting product JSON payloads.
+- `run_sitemap_agent.py` – Command line entry point for the scraper.
 - `agentic_crawler_123.ipynb` – Notebook with reference experiments on polite
   crawling (kept for historical context).
 
@@ -24,7 +24,6 @@ phases:
 
 The agent depends on the following Python packages:
 
-- `parlant`
 - `pandas`
 - `requests`
 - `beautifulsoup4`
@@ -40,8 +39,12 @@ pip install -r requirements.txt
 1. Prepare an Excel workbook with the following columns:
    - `brand_name`
    - `site_url`
-   - `primary_sitemaps` – either a JSON list, a newline separated string, or a
-     comma separated string of sitemap URLs.
+   - `product_sitemap_urls` – provide one or more product sitemap URLs (as a
+     JSON array, newline separated string, or comma separated string). The agent
+     does not attempt to discover primary sitemap indices, so this field is the
+     sole entry point for crawling each store. The loader also accepts legacy
+     column names (`product_sitemap_url` or `product_sitemaps`) but
+     `product_sitemap_urls` is the standardized option.
 2. Run the agent:
 
 ```bash
@@ -49,8 +52,11 @@ python run_sitemap_agent.py stores.xlsx output.json --progress logs/progress.jso
 ```
 
 The resulting JSON file will contain an entry per brand with the discovered
-product sitemap URLs. Progress snapshots are written to the optional JSONL file
-so that long-running sessions can be resumed or inspected.
+product sitemap URLs, product page URLs, and the structured JSON payload for
+each product. Progress snapshots are written to the optional JSONL file so that
+long-running sessions can be resumed or inspected. Any product URLs that fail to
+resolve to a JSON endpoint or return invalid data are logged in the `errors`
+field while still being associated with the originating store.
 
 ## Respectful crawling
 
