@@ -50,6 +50,12 @@ def parse_args() -> argparse.Namespace:
         help="Optional cap on the number of products to fetch per site.",
     )
     parser.add_argument(
+        "--product-url-output",
+        type=Path,
+        default=None,
+        help="Optional path to a JSONL file where collected product URLs will be stored.",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Increase logging verbosity.",
@@ -72,6 +78,7 @@ def main() -> None:
         crawler_config=crawler_config,
         progress_path=args.progress,
         max_products=args.max_products,
+        product_url_output=args.product_url_output,
     )
     results = crawler.run(args.excel, args.output)
     total_products = sum(len(result.products) for result in results)
