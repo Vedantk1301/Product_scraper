@@ -113,6 +113,10 @@ class ProductSitemapCrawler:
 
     def _iterate_products(self, product_urls: Iterable[str]) -> Iterable[str]:
         for url in product_urls:
+            parsed = urlsplit(url)
+            if not parsed.path or parsed.path == "/":
+                logger.debug("Skipping URL with empty path: %s", url)
+                continue
             yield url
 
     def _fetch_product(self, fetcher: SitemapFetcher, product_url: str) -> ProductRecord:
