@@ -1,4 +1,4 @@
-"""Configuration primitives for the sitemap extraction agent."""
+"""Configuration primitives for the product sitemap crawler."""
 
 from __future__ import annotations
 
@@ -17,15 +17,3 @@ class CrawlerConfig:
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/119.0 Safari/537.36"
     )
-
-
-@dataclass
-class AgentConfig:
-    """Runtime configuration for the Parlant agent."""
-
-    system_prompt: str = (
-        "You are a data collection specialist. Your mission is to respect robots "
-        "policies, remain polite, and only fetch sitemap documents that are "
-        "explicitly provided."
-    )
-    max_messages: int = 25
