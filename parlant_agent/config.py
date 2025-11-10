@@ -1,4 +1,4 @@
-"""Configuration primitives for the sitemap extraction agent."""
+"""Configuration primitives for the Shopify product scraper."""
 
 from __future__ import annotations
 
@@ -20,12 +20,7 @@ class CrawlerConfig:
 
 
 @dataclass
-class AgentConfig:
-    """Runtime configuration for the Parlant agent."""
+class ProductScraperConfig:
+    """Settings that control Shopify specific behaviour."""
 
-    system_prompt: str = (
-        "You are a data collection specialist. Your mission is to respect robots "
-        "policies, remain polite, and only fetch sitemap documents that are "
-        "explicitly provided."
-    )
-    max_messages: int = 25
+    product_json_extension: str = ".json"

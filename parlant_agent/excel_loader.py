@@ -14,8 +14,13 @@ from .models import SiteEntry
 REQUIRED_COLUMNS = {
     "brand_name",
     "site_url",
-    "primary_sitemaps",
 }
+
+PRODUCT_SITEMAP_COLUMNS = [
+    "product_sitemap_urls",
+    "product_sitemap_url",
+    "product_sitemaps",
+]
 
 
 def _parse_sitemap_cell(value) -> List[str]:
@@ -52,24 +57,41 @@ def load_sites_from_excel(path: Path | str) -> List[SiteEntry]:
         raise FileNotFoundError(workbook_path)
 
     frame = pd.read_excel(workbook_path)
-    missing = REQUIRED_COLUMNS - set(frame.columns)
+    columns = set(frame.columns)
+    missing = REQUIRED_COLUMNS - columns
     if missing:
         raise ValueError(
             "Excel workbook is missing required columns: " + ", ".join(sorted(missing))
         )
 
+    if PRODUCT_SITEMAP_COLUMNS[0] not in columns:
+        # Fall back to legacy column names if provided.
+        if not any(column in columns for column in PRODUCT_SITEMAP_COLUMNS[1:]):
+            raise ValueError(
+                "Excel workbook must include a 'product_sitemap_urls' column (or the "
+                "legacy 'product_sitemaps' column)."
+            )
+
     sites: List[SiteEntry] = []
     for record in frame.to_dict(orient="records"):
-        sitemap_urls = _parse_sitemap_cell(record.get("primary_sitemaps"))
+        product_sitemaps: List[str] = []
+        for column in PRODUCT_SITEMAP_COLUMNS:
+            if column not in record:
+                continue
+            product_sitemaps = _parse_sitemap_cell(record.get(column))
+            if product_sitemaps:
+                break
         metadata = {
             key: value
             for key, value in record.items()
-            if key not in REQUIRED_COLUMNS and value == value  # filter NaN
+            if key not in REQUIRED_COLUMNS
+            and key not in PRODUCT_SITEMAP_COLUMNS
+            and value == value  # filter NaN
         }
         site = SiteEntry(
             brand_name=str(record.get("brand_name", "")).strip(),
             site_url=str(record.get("site_url", "")).strip(),
-            sitemap_urls=sitemap_urls,
+            product_sitemap_urls=product_sitemaps,
             metadata=metadata,
         )
         sites.append(site)
